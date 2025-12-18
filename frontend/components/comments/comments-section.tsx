@@ -17,7 +17,7 @@ interface CommentsSectionProps {
 }
 
 export default function CommentsSection({ trainingId, currentUserId, currentUserRole }: CommentsSectionProps) {
-  const { toast } = useToast()
+  const { success, error } = useToast()
   const queryClient = useQueryClient()
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
@@ -44,18 +44,10 @@ export default function CommentsSection({ trainingId, currentUserId, currentUser
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', trainingId] })
       setNewComment('')
-      toast({
-        title: 'Success',
-        description: 'Comment posted',
-        variant: 'success',
-      })
+      success('Success', 'Comment posted')
     },
     onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to post comment',
-        variant: 'destructive',
-      })
+      error('Error', 'Failed to post comment')
     },
   })
 
@@ -72,18 +64,10 @@ export default function CommentsSection({ trainingId, currentUserId, currentUser
       queryClient.invalidateQueries({ queryKey: ['comments', trainingId] })
       setReplyContent('')
       setReplyingTo(null)
-      toast({
-        title: 'Success',
-        description: 'Reply posted',
-        variant: 'success',
-      })
+      success('Success', 'Reply posted')
     },
     onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to post reply',
-        variant: 'destructive',
-      })
+      error('Error', 'Failed to post reply')
     },
   })
 
@@ -96,18 +80,10 @@ export default function CommentsSection({ trainingId, currentUserId, currentUser
       queryClient.invalidateQueries({ queryKey: ['comments', trainingId] })
       setEditingId(null)
       setEditContent('')
-      toast({
-        title: 'Success',
-        description: 'Comment updated',
-        variant: 'success',
-      })
+      success('Success', 'Comment updated')
     },
     onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update comment',
-        variant: 'destructive',
-      })
+      error('Error', 'Failed to update comment')
     },
   })
 
@@ -117,18 +93,10 @@ export default function CommentsSection({ trainingId, currentUserId, currentUser
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', trainingId] })
-      toast({
-        title: 'Success',
-        description: 'Comment deleted',
-        variant: 'success',
-      })
+      success('Success', 'Comment deleted')
     },
     onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete comment',
-        variant: 'destructive',
-      })
+      error('Error', 'Failed to delete comment')
     },
   })
 
