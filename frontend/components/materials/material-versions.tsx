@@ -17,7 +17,7 @@ interface MaterialVersionsProps {
 }
 
 export function MaterialVersions({ materialId, trainingId, currentUserId }: MaterialVersionsProps) {
-  const { toast } = useToast()
+  const { success, error } = useToast()
   const queryClient = useQueryClient()
 
   const { data: versions, isLoading } = useQuery({
@@ -37,18 +37,10 @@ export function MaterialVersions({ materialId, trainingId, currentUserId }: Mate
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['material-versions', materialId] })
       queryClient.invalidateQueries({ queryKey: ['materials'] })
-      toast({
-        title: 'Success',
-        description: 'Material rolled back to selected version',
-        variant: 'success',
-      })
+      success('Success', 'Material rolled back to selected version')
     },
     onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to rollback material',
-        variant: 'destructive',
-      })
+      error('Error', 'Failed to rollback material')
     },
   })
 
