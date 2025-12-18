@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+</head>
+<body>
+    <h1>Setting Token...</h1>
+    <script>
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRtZHMuY29tIiwic3ViIjoiNmJhNWRmMzktZmZlYS00Y2ExLWEwZDAtZWExMGEwNTdiN2RjIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzY2MDE0ODgyLCJleHAiOjE3NjY2MTk2ODJ9.z3tYlymAeVrvVuK5HHnZMr4dwdve-tm7XXuzNJ_bqa8";
+        const user = {
+            "id": "6ba5df39-ffea-4ca1-a0d0-ea10a057b7dc",
+            "email": "admin@tmds.com",
+            "firstName": "Admin",
+            "lastName": "User",
+            "role": "ADMIN"
+        };
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        window.location.href = 'http://localhost:3001/dashboard';
+    </script>
+</body>
+</html>

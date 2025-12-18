@@ -1,0 +1,315 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TRAINER
+  PARTICIPANT
+}
+
+enum TrainingMode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum TrainingStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaterialType {
+  PRE_WORK
+  POST_TRAINING
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  password        String
+  firstName       String
+  lastName        String
+  role            UserRole @default(PARTICIPANT)
+  isActive        Boolean  @default(true)
+  twoFactorSecret String?  // Encrypted 2FA secret
+  twoFactorEnabled Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  trainingsAsTrainer Training[]         @relation("TrainerTrainings")
+  enrollments        Enrollment[]
+  attendanceRecords  Attendance[]
+  feedbacks          Feedback[]
+  notifications      Notification[]
+  createdTrainings   Training[]         @relation("CreatedBy")
+  auditLogs          AuditLog[]
+  trainingTemplates  TrainingTemplate[]
+  materialVersions   MaterialVersion[]
+  comments           Comment[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Training {
+  id              String         @id @default(uuid())
+  name            String
+  description     String?
+  trainerId       String
+  createdById     String
+  startDate       DateTime
+  endDate         DateTime
+  mode            TrainingMode
+  status          TrainingStatus @default(DRAFT)
+  location        String? // For offline/hybrid
+  meetingLink     String? // For online/hybrid
+  maxParticipants Int?           @default(100)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  trainer     User               @relation("TrainerTrainings", fields: [trainerId], references: [id])
+  createdBy   User               @relation("CreatedBy", fields: [createdById], references: [id])
+  materials   TrainingMaterial[]
+  enrollments Enrollment[]
+  attendance  Attendance[]
+  feedbacks   Feedback[]
+  reports     Report[]
+  comments    Comment[]
+
+  @@index([trainerId])
+  @@index([status])
+  @@index([startDate])
+  @@map("trainings")
+}
+
+model TrainingMaterial {
+  id            String       @id @default(uuid())
+  trainingId    String
+  name          String
+  description   String?
+  type          MaterialType
+  fileUrl       String? // For uploaded files
+  fileSize      Int? // In bytes
+  fileName      String?
+  externalLink  String? // For external URLs
+  mimeType      String? // PDF, PPT, Excel, Video, etc.
+  isRequired    Boolean      @default(true)
+  distributedAt DateTime? // When it was auto-distributed
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  training Training          @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  versions MaterialVersion[]
+
+  @@index([trainingId])
+  @@index([type])
+  @@map("training_materials")
+}
+
+model Enrollment {
+  id               String    @id @default(uuid())
+  trainingId       String
+  userId           String
+  enrolledAt       DateTime  @default(now())
+  status           String    @default("ENROLLED") // ENROLLED, COMPLETED, CANCELLED
+  completedAt      DateTime?
+  preWorkCompleted Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  training Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingId, userId])
+  @@index([trainingId])
+  @@index([userId])
+  @@index([status])
+  @@map("enrollments")
+}
+
+model Attendance {
+  id           String           @id @default(uuid())
+  trainingId   String
+  userId       String
+  status       AttendanceStatus @default(PRESENT)
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+  markedBy     String? // User ID who marked (for manual marking)
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  training Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingId, userId])
+  @@index([trainingId])
+  @@index([userId])
+  @@map("attendances")
+}
+
+model Feedback {
+  id             String   @id @default(uuid())
+  trainingId     String
+  userId         String
+  rating         Int // 1-5 stars
+  comment        String?
+  trainerRating  Int? // Separate rating for trainer
+  trainerComment String?
+  submittedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  training Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingId, userId])
+  @@index([trainingId])
+  @@index([userId])
+  @@index([rating])
+  @@map("feedbacks")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String // INFO, WARNING, SUCCESS, ERROR
+  isRead    Boolean   @default(false)
+  link      String? // Optional link to related resource
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  trainingId  String
+  type        String // ATTENDANCE, COMPLETION, FEEDBACK
+  fileUrl     String
+  fileName    String
+  generatedAt DateTime @default(now())
+  generatedBy String? // User ID
+
+  training Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  @@index([trainingId])
+  @@index([type])
+  @@map("reports")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
+  entityType String // User, Training, Enrollment, Material, etc.
+  entityId   String?
+  details    Json? // Additional details about the action
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model TrainingTemplate {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  category     String?
+  tags         String[] // Array of tags
+  templateData Json // Store training configuration as JSON
+  createdById  String
+  isPublic     Boolean  @default(false)
+  usageCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById])
+  @@index([category])
+  @@index([isPublic])
+  @@map("training_templates")
+}
+
+model MaterialVersion {
+  id           String   @id @default(uuid())
+  materialId   String
+  version      Int      @default(1)
+  name         String
+  description  String?
+  fileUrl      String?
+  externalLink String?
+  mimeType     String?
+  fileSize     Int?
+  fileName     String?
+  changeNotes  String? // What changed in this version
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  material  TrainingMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  createdBy User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, version])
+  @@index([materialId])
+  @@index([createdAt])
+  @@map("material_versions")
+}
+
+model Comment {
+  id         String    @id @default(uuid())
+  trainingId String
+  userId     String
+  content    String
+  parentId   String? // For threaded comments
+  isEdited   Boolean   @default(false)
+  editedAt   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  training Training  @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([trainingId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@map("comments")
+}
